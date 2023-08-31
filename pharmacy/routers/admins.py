@@ -56,7 +56,7 @@ def login_for_access_token(db: Database,
 
     token = create_token(data=data)
 
-    return {"token_type": "bearer", "token": token}
+    return {"token_type": "bearer", "access_token": token}
 
 @router.get("/current", response_model=AdminSchema)
 def get_current_admin(admin: AuthenticatedAdmin) -> Admin:

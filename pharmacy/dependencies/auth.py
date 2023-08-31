@@ -21,7 +21,7 @@ def get_authenticated_user(db: Database, token=Depends(user_scheme)) -> User:
     except JWTError:
         raise token_exception
 
-    user_id = int(data("sub"))
+    user_id = int(data["sub"])
 
     user: User | None = db.get(User, user_id)
 
@@ -37,11 +37,11 @@ def get_authenticated_admin(db: Database, token=Depends(admin_scheme)) -> Admin:
     try:
         data: dict[str, str] = jwt.decode(token=token, key="something", 
             algorithms=["HS256"])
-            
+
     except JWTError:
         raise token_exception
         
-    admin_id = int(data("sub"))
+    admin_id = int(data["sub"])
 
     admin: Admin | None = db.get(Admin, admin_id)
 
