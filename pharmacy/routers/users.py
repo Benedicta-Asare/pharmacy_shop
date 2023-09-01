@@ -6,11 +6,14 @@ from sqlalchemy import select
 
 from pharmacy.dependencies.auth import AuthenticatedUser, get_authenticated_admin
 from pharmacy.security import get_hash, password_matches_hashed
-from pharmacy.dependencies.database import Database, AnnotatedUser
+from pharmacy.dependencies.database import Database, AnnotatedUser, AnnotatedCartItem
 from pharmacy.database.models.users import User
 from pharmacy.dependencies.jwt import create_token
 from pharmacy.schemas.tokens import Token
 from pharmacy.schemas.users import UserCreate, UserSchema
+from pharmacy.schemas.cart_items import CartItemCreate, CartItemSchema
+from pharmacy.database.models.cart_items import CartItem
+from pharmacy.dependencies.database import get_inventory_or_404
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -60,6 +63,37 @@ def login_for_access_token(db: Database,
 @router.get("/current", response_model=UserSchema)
 def get_current_user(user: AuthenticatedUser) -> User:
     return user
+
+@router.post("/current/cart_items", response_model=CartItemSchema)
+def add_item_to_cart(
+    user: AuthenticatedUser, 
+    cart_item_data: CartItemCreate, 
+    db: Database
+    ) -> CartItem:
+    get_inventory_or_404(db=db, inventory_id=cart_item_data.inventory_id)
+    cart_item = CartItem(**cart_item_data.model_dump(), user_id=user.id)
+
+    db.add(cart_item)
+    db.commit()
+    db.refresh(cart_item)
+
+    return cart_item
+
+@router.get("/current/cart_items", response_model=list[CartItemSchema])
+def get_list_of_cart_items(user: AuthenticatedUser, db: Database) -> list[CartItem]:
+    return db.scalars(select(CartItem).where(CartItem.user_id == user.id)).all()
+
+@router.delete("/current/cart_items/{cart_item_id}")
+def delete_item_from_cart(
+    user: AuthenticatedUser, 
+    db: Database, 
+    cart_item: AnnotatedCartItem
+    ) -> None:
+    if cart_item.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
+            detail="cart item belongs to another user")
+    db.delete(cart_item)
+    db.commit()
 
 @router.get("/{user_id}", response_model=UserSchema, 
     dependencies=[Depends(get_authenticated_admin)])

@@ -21,7 +21,9 @@ def create_inventories(inventory_data: InventoryCreate, db: Database):
         return inventory
     except sqlalchemy.exc.IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="inventory already exists")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="inventory already exists")
 
 @router.get("/inventories", response_model=list[InventorySchema])
 def get_list_of_inventories(db: Database):
