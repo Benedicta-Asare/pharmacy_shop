@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Body
+from fastapi import FastAPI
 
 from pharmacy.database.core import Base, engine
 from pharmacy.routers import users, inventories, admins
