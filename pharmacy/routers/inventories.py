@@ -10,7 +10,7 @@ from pharmacy.schemas.inventories import InventorySchema, InventoryCreate
 router = APIRouter()
 
 @router.post("/inventories", response_model=InventorySchema)
-def create_inventories(inventory_data: InventoryCreate, db: Database):
+def create_inventory(inventory_data: InventoryCreate, db: Database):
     inventory = Inventory(**inventory_data.model_dump())
 
     try:
