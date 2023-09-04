@@ -27,16 +27,7 @@ def get_user_or_404(db: Database, user_id: int) -> User:
 
     return user
 
-def get_inventory_or_404(db: Database, inventory_id) -> Inventory:
-    inventory: Inventory | None = db.get(Inventory, inventory_id)
-
-    if inventory is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
-            detail="inventory not found")
-
-    return inventory
-
-def get_admin_or_404(db: Database, admin_id) -> Admin:
+def get_admin_or_404(db: Database, admin_id: int) -> Admin:
     admin: Admin | None = db.get(Admin, admin_id)
 
     if admin is None:
@@ -44,6 +35,16 @@ def get_admin_or_404(db: Database, admin_id) -> Admin:
             detail="admin not found")
 
     return admin
+
+
+def get_inventory_or_404(db: Database, inventory_id: int) -> Inventory:
+    inventory: Inventory | None = db.get(Inventory, inventory_id)
+
+    if inventory is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+            detail="inventory not found")
+
+    return inventory
 
 def get_cart_item_or_404(db: Database, cart_item_id: int) -> CartItem:
     cart_item: CartItem | None = db.get(CartItem, cart_item_id)
@@ -55,6 +56,6 @@ def get_cart_item_or_404(db: Database, cart_item_id: int) -> CartItem:
     return cart_item
 
 AnnotatedUser = Annotated[User, Depends(get_user_or_404)]
-AnnotatedInventory = Annotated[Inventory, Depends(get_inventory_or_404)]
 AnnotatedAdmin = Annotated[Admin, Depends(get_admin_or_404)]
+AnnotatedInventory = Annotated[Inventory, Depends(get_inventory_or_404)]
 AnnotatedCartItem = Annotated[CartItem, Depends(get_cart_item_or_404)]
