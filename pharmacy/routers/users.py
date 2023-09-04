@@ -5,15 +5,21 @@ import sqlalchemy.exc
 from sqlalchemy import select
 
 from pharmacy.dependencies.auth import AuthenticatedUser, get_authenticated_admin
+from pharmacy.enums import OrderStatus
 from pharmacy.security import get_hash, password_matches_hashed
-from pharmacy.dependencies.database import Database, AnnotatedUser, AnnotatedCartItem
+from pharmacy.dependencies.database import (
+    Database, AnnotatedUser, AnnotatedCartItem, get_inventory_or_404)
 from pharmacy.database.models.users import User
+from pharmacy.database.models.orders import Order
+from pharmacy.database.models.inventories import Inventory
+from pharmacy.database.models.checkouts import Checkout
 from pharmacy.dependencies.jwt import create_token
 from pharmacy.schemas.tokens import Token
 from pharmacy.schemas.users import UserCreate, UserSchema
 from pharmacy.schemas.cart_items import CartItemCreate, CartItemSchema
-from pharmacy.database.models.cart_items import CartItem
-from pharmacy.dependencies.database import get_inventory_or_404
+from pharmacy.database.models.cart_items import CartItem 
+from pharmacy.schemas.orders import OrderSchema
+
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -64,13 +70,18 @@ def login_for_access_token(db: Database,
 def get_current_user(user: AuthenticatedUser) -> User:
     return user
 
-@router.post("/current/cart_items", response_model=CartItemSchema)
+@router.post("/current/cart-items", response_model=CartItemSchema)
 def add_item_to_cart(
     user: AuthenticatedUser, 
     cart_item_data: CartItemCreate, 
     db: Database
     ) -> CartItem:
-    get_inventory_or_404(db=db, inventory_id=cart_item_data.inventory_id)
+    inventory = get_inventory_or_404(db=db, inventory_id=cart_item_data.inventory_id)
+
+    if cart_item_data.quantity > inventory.quantity:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="quantity is more than available stock",)
+
     cart_item = CartItem(**cart_item_data.model_dump(), user_id=user.id)
 
     db.add(cart_item)
@@ -79,11 +90,63 @@ def add_item_to_cart(
 
     return cart_item
 
-@router.get("/current/cart_items", response_model=list[CartItemSchema])
+@router.get("/current/cart-items", response_model=list[CartItemSchema])
 def get_list_of_cart_items(user: AuthenticatedUser, db: Database) -> list[CartItem]:
     return db.scalars(select(CartItem).where(CartItem.user_id == user.id)).all()
 
-@router.delete("/current/cart_items/{cart_item_id}")
+@router.post("/current/orders")
+def place_order(user: AuthenticatedUser, db: Database) -> None:
+    cart_items = db.scalars(select(CartItem).where(CartItem.user_id == user.id)).all()
+
+    if not cart_items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="cannot place an order if cart is empty",
+        )
+
+    order = Order(status=OrderStatus.PENDING.value, user_id=user.id)
+
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    checkouts: list[Checkout] = []
+
+    for cart_item in cart_items:
+        inventory: Inventory | None = db.get(Inventory, cart_item.inventory_id)
+
+        if inventory is None:
+            continue
+
+        if cart_item.quantity > inventory.quantity:
+            db.delete(order)
+            db.commit()
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"not enough items in stock for {inventory.name}."
+                
+            )
+
+        checkout = Checkout(
+            order_id=order.id,
+            cart_item_id=cart_item.id,
+            sub_total=cart_item.quantity * inventory.price,
+        )
+
+        checkouts.append(checkout)
+        inventory.quantity -= cart_item.quantity
+
+        db.add(checkout)
+        db.commit()
+
+@router.get("/current/orders", response_model=list[OrderSchema])
+def get_list_of_orders(user: AuthenticatedUser, db: Database):
+    checkouts = db.scalars(select(Order).where(Order.user_id == user.id)).all
+
+    #for order in order
+
+@router.delete("/current/cart-items/{cart_item_id}")
 def delete_item_from_cart(
     user: AuthenticatedUser, 
     db: Database, 
