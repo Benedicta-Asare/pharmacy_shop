@@ -8,7 +8,7 @@ from pharmacy.routers import users, inventories, admins
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     # Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(engine)
 

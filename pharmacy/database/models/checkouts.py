@@ -11,7 +11,7 @@ class Checkout(Base):
         primary_key=True
     )
     order_id: Mapped[int] = mapped_column(
-        ForeignKey("order.id"), 
+        ForeignKey("orders.id"), 
         primary_key=True,
     )
     sub_total: Mapped[float] = mapped_column(nullable=False)
