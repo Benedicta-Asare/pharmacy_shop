@@ -1,7 +1,18 @@
 from pydantic import BaseModel
 
-from pharmacy.schemas.cart_items import CartItemSchema
+from pharmacy.enums import OrderStatus
+from pharmacy.schemas.users import UserSchema
+
+
+class OrderItem(BaseModel):
+    sub_total: float
+    name: str
+    quantity: int
+
 
 class OrderSchema(BaseModel):
     id: int
-    cart_items: list[CartItemSchema]
+    user: UserSchema | None = None
+    status: OrderStatus
+    total: float = 0
+    order_items: list[OrderItem] = []
