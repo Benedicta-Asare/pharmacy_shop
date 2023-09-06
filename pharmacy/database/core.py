@@ -11,7 +11,7 @@ SessionMaker = sessionmaker(
     bind=engine, 
     autoflush=False, 
     expire_on_commit=False, 
-    auto_on_commit=False,)
+    autocommit=False,)
 
 class Base(DeclarativeBase):
     pass
